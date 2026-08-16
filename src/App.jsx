@@ -3,7 +3,7 @@ import {
   UserPlus, Trash2, Volume2, VolumeX, Play, Eye, EyeOff,
   MessageCircle, Vote, Trophy, RotateCcw, AlertTriangle, ChevronRight, Home
 } from 'lucide-react';
-import { categoryNames, getRandomWord } from './wordBank';
+import { difficulties, getCategoryNames, getRandomWord } from './wordBank';
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -156,11 +156,45 @@ function SetupScreen({ players, setPlayers, voiceEnabled, setVoiceEnabled, onSta
   );
 }
 
+// ── DifficultyScreen ──────────────────────────────────────────────────────────
+
+function DifficultyScreen({ onChoose, onHome }) {
+  const config = {
+    'Fácil':   { icon: '🟢', desc: 'Palavras simples e diretas' },
+    'Médio':   { icon: '🟡', desc: 'Mais desafiador, com novas categorias' },
+    'Difícil': { icon: '🔴', desc: 'Para quem já é craque no jogo' },
+  };
+
+  return (
+    <Screen onHome={onHome}>
+      <Title>Escolhe a Dificuldade</Title>
+      <div className="flex flex-col gap-3">
+        {difficulties.map(diff => (
+          <button
+            key={diff}
+            onClick={() => onChoose(diff)}
+            className="bg-gray-800 hover:bg-gray-700 active:scale-95 rounded-2xl py-5 px-5 flex items-center gap-4 transition-colors text-left"
+          >
+            <span className="text-4xl">{config[diff].icon}</span>
+            <span>
+              <span className="font-semibold text-lg block">{diff}</span>
+              <span className="text-gray-400 text-sm">{config[diff].desc}</span>
+            </span>
+          </button>
+        ))}
+      </div>
+    </Screen>
+  );
+}
+
 // ── CategoryScreen ────────────────────────────────────────────────────────────
 
-function CategoryScreen({ onChoose, onHome }) {
-  const allCategories = [...categoryNames, 'Aleatória'];
-  const icons = { Animais: '🐾', Objetos: '📦', Comidas: '🍕', Profissões: '💼', Lugares: '🗺️', Aleatória: '🎲' };
+function CategoryScreen({ difficulty, onChoose, onHome }) {
+  const allCategories = [...getCategoryNames(difficulty), 'Aleatória'];
+  const icons = {
+    Animais: '🐾', Objetos: '📦', Comidas: '🍕', Profissões: '💼', Lugares: '🗺️',
+    Famosos: '⭐', Filmes: '🎬', Cidades: '🏙️', Diversos: '🔀', Aleatória: '🎲',
+  };
 
   return (
     <Screen onHome={onHome}>
@@ -459,6 +493,7 @@ export default function App() {
   const [stage, setStage] = useState('setup');
   const [players, setPlayers] = useState([]);
   const [voiceEnabled, setVoiceEnabled] = useState(false);
+  const [difficulty, setDifficulty] = useState('Fácil');
   const [category, setCategory] = useState('');
   const [secretWord, setSecretWord] = useState('');
   const [impostorIndex, setImpostorIndex] = useState(0);
@@ -466,11 +501,16 @@ export default function App() {
   const [votes, setVotes] = useState({});
 
   function handleStartGame() {
+    setStage('difficulty');
+  }
+
+  function handleChooseDifficulty(diff) {
+    setDifficulty(diff);
     setStage('category');
   }
 
   function handleChooseCategory(cat) {
-    const word = getRandomWord(cat);
+    const word = getRandomWord(difficulty, cat);
     const imp = Math.floor(Math.random() * players.length);
     setCategory(cat);
     setSecretWord(word);
@@ -527,7 +567,9 @@ export default function App() {
     />
   );
 
-  if (stage === 'category') return <CategoryScreen onChoose={handleChooseCategory} onHome={handleGoHome} />;
+  if (stage === 'difficulty') return <DifficultyScreen onChoose={handleChooseDifficulty} onHome={handleGoHome} />;
+
+  if (stage === 'category') return <CategoryScreen difficulty={difficulty} onChoose={handleChooseCategory} onHome={handleGoHome} />;
 
   if (stage === 'reveal') return (
     <RevealScreen
