@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   UserPlus, Trash2, Volume2, VolumeX, Play, Eye, EyeOff,
   MessageCircle, Vote, Trophy, RotateCcw, AlertTriangle, ChevronRight, Home
@@ -382,6 +382,8 @@ function VotingScreen({ players, currentPlayerIndex, votes, onVote, onFinish, on
 
 function ResultsScreen({ players, votes, impostorIndex, secretWord, onNewRound, onNewGame, setPlayers, onHome }) {
   const impostor = players[impostorIndex];
+  const [phase, setPhase] = useState('suspense'); // 'suspense' -> 'revealing' -> 'revealed'
+  const [count, setCount] = useState(3);
 
   const voteCounts = {};
   players.forEach(p => { voteCounts[p.name] = 0; });
@@ -411,7 +413,76 @@ function ResultsScreen({ players, votes, impostorIndex, secretWord, onNewRound, 
     onNewGame();
   }
 
+  function handleReveal() {
+    vibrate();
+    setCount(3);
+    setPhase('revealing');
+  }
+
+  useEffect(() => {
+    if (phase !== 'revealing') return;
+    if (count === 0) {
+      const t = setTimeout(() => { vibrate(); setPhase('revealed'); }, 500);
+      return () => clearTimeout(t);
+    }
+    const t = setTimeout(() => { vibrate(); setCount(c => c - 1); }, 700);
+    return () => clearTimeout(t);
+  }, [phase, count]);
+
   const sorted = [...updatedPlayers].sort((a, b) => b.score - a.score);
+
+  if (phase !== 'revealed') {
+    return (
+      <Screen onHome={onHome}>
+        <Title>Resultados</Title>
+
+        {impostorCaught ? (
+          <div className="bg-red-900 border border-red-500 rounded-2xl p-5 text-center mb-4">
+            <p className="text-2xl font-bold text-red-100">🎉 O Impostor foi Pego!</p>
+            <p className="text-red-300 text-sm mt-1">Quem votou certo ganhou +1 ponto</p>
+          </div>
+        ) : (
+          <div className="bg-green-900 border border-green-500 rounded-2xl p-5 text-center mb-4">
+            <p className="text-2xl font-bold text-green-100">😈 O Impostor Escapou!</p>
+            <p className="text-green-300 text-sm mt-1">O Impostor ganhou +2 pontos</p>
+          </div>
+        )}
+
+        <div className="bg-gray-800 rounded-2xl p-4 text-center mb-4">
+          <p className="text-gray-400 text-sm">A palavra secreta era</p>
+          <p className="text-3xl font-extrabold text-green-300 mt-1">{secretWord}</p>
+        </div>
+
+        <div className="bg-gray-800 rounded-2xl overflow-hidden mb-6">
+          <p className="text-gray-400 text-xs uppercase font-semibold px-4 pt-3 pb-1">Votos recebidos</p>
+          {Object.entries(voteCounts)
+            .sort((a, b) => b[1] - a[1])
+            .map(([name, count]) => (
+              <div key={name} className="flex items-center justify-between px-4 py-2 border-t border-gray-700 first:border-0">
+                <span className="font-medium">{name}</span>
+                <span className="font-bold text-yellow-300">{count} voto{count !== 1 ? 's' : ''}</span>
+              </div>
+            ))}
+        </div>
+
+        {phase === 'suspense' ? (
+          <BigButton onClick={handleReveal} color="red">
+            <span className="flex items-center justify-center gap-2">
+              <Eye size={20} /> Revelar o Impostor
+            </span>
+          </BigButton>
+        ) : (
+          <div className="flex flex-col items-center gap-3 py-8">
+            <div className="text-6xl animate-bounce">🕵️</div>
+            <p className="text-5xl font-extrabold text-gray-300 tabular-nums">
+              {count > 0 ? count : '🥁'}
+            </p>
+            <p className="text-gray-400 text-sm animate-pulse">Revelando o impostor...</p>
+          </div>
+        )}
+      </Screen>
+    );
+  }
 
   return (
     <Screen onHome={onHome}>
